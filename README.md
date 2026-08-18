@@ -292,6 +292,52 @@ REFRESH_TOKEN
 ADMIN_KEY
 ```
 
+Cloudflare Worker 增加 KV
+
+进入：
+
+Cloudflare Dashboard
+
+↓
+
+Workers
+
+↓
+
+你的 Worker
+
+↓
+
+Settings
+
+↓
+
+Bindings
+
+↓
+
+Add binding
+
+添加：
+```
+Type:
+KV Namespace
+
+Variable name:
+
+PHOTO_CACHE
+
+Namespace:
+
+创建一个新的 KV
+```
+
+例如：
+
+```
+PHOTO_CACHE
+```
+
 ---
 
 # 10. 图片访问安全
