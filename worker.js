@@ -1,6 +1,6 @@
 /*
 ====================================================
- Apple Photos v5.4.1 Final
+ Apple Photos v5.5.1 Drive Cache
 
  worker.js
 
@@ -34,7 +34,7 @@ REFRESH_TOKEN:"",
 
 DRIVE_FOLDER_ID:
 
-"",
+"1BNwCgaQ5MyzHYmXO-UiXsC4YtL3qlzpr",
 
 
 ADMIN_KEY:"",
@@ -584,7 +584,7 @@ role:"reader"
 );
 
 
-
+await clearDriveCache();
 
 
 
@@ -593,7 +593,22 @@ return result;
 
 }
 
+async function clearDriveCache(){
 
+
+if(
+ENV &&
+ENV.PHOTO_CACHE
+){
+
+await ENV.PHOTO_CACHE.delete(
+CACHE_KEY
+);
+
+}
+
+
+}
 
 
 
@@ -643,7 +658,7 @@ await res.text()
 
 }
 
-
+await clearDriveCache();
 
 
 return true;
@@ -780,6 +795,141 @@ return files;
 
 }
 
+/*
+=================================
+ Drive Cache v5.5.1
+=================================
+*/
+
+
+const CACHE_KEY =
+"photos_drive_list_v551";
+
+
+
+async function getCachedDriveFiles(){
+
+
+if(
+!globalThis.ENV ||
+!globalThis.ENV.PHOTO_CACHE
+){
+
+return null;
+
+}
+
+
+
+const cache =
+await ENV.PHOTO_CACHE.get(
+CACHE_KEY,
+"json"
+);
+
+
+
+return cache || null;
+
+
+}
+
+
+
+
+async function setCachedDriveFiles(files){
+
+
+
+if(
+!globalThis.ENV ||
+!globalThis.ENV.PHOTO_CACHE
+){
+
+return;
+
+}
+
+
+
+await ENV.PHOTO_CACHE.put(
+
+CACHE_KEY,
+
+JSON.stringify(files),
+
+{
+
+expirationTtl:300
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+
+async function getDriveFilesFast(){
+
+
+
+// 读取缓存
+
+const cache =
+await getCachedDriveFiles();
+
+
+
+if(cache){
+
+
+console.log(
+"Drive Cache HIT"
+);
+
+
+return cache;
+
+
+}
+
+
+
+
+console.log(
+"Drive Cache MISS"
+);
+
+
+
+
+// 查询Google Drive
+
+const files =
+await listDriveFiles();
+
+
+
+
+// 写缓存
+
+await setCachedDriveFiles(
+files
+);
+
+
+
+return files;
+
+
+
+}
 
 /*
 ====================================================
@@ -1362,14 +1512,31 @@ CONFIG.ADMIN_KEY+
 async function pageApi(request){
 
 
+const url =
+new URL(request.url);
+
+
+
+const page =
+Number(
+url.searchParams.get("page")
+||1
+);
+
+
+
+const size =
+100;
+
+
 
 let files =
-
-await listDriveFiles();
-
+await getDriveFilesFast();
 
 
 
+
+// 按日期排序
 
 files.sort(
 (a,b)=>{
@@ -1377,44 +1544,68 @@ files.sort(
 
 const dateA =
 parsePhotoDate(
-    a.imageMediaMetadata?.time ||
-    a.createdTime ||
-    null
-)
+a.imageMediaMetadata?.time ||
+a.createdTime
+);
 
 
 const dateB =
 parsePhotoDate(
-    b.imageMediaMetadata?.time ||
-    b.createdTime ||
-    null
-)
-
-
-
-return dateB - dateA;
-
-
-}
+b.imageMediaMetadata?.time ||
+b.createdTime
 );
 
 
 
+return dateB-dateA;
+
+
+});
+
+
+
+
+
+const start =
+(page-1)*size;
+
+
+const end =
+start+size;
+
+
+
+const result =
+files.slice(
+start,
+end
+);
 
 
 
 return Response.json({
 
-total:
 
+page,
+
+
+size,
+
+
+total:
 files.length,
+
+
+
+hasMore:
+end < files.length,
+
 
 
 files:
 
-files.map(
+result.map(file=>({
 
-file=>({
 
 id:file.id,
 
@@ -1426,7 +1617,6 @@ mimeType:file.mimeType,
 
 
 createdTime:
-
 file.createdTime,
 
 
@@ -1435,27 +1625,20 @@ photoTime:
 
 file.imageMediaMetadata?.time
 ||
-file.createdTime
-||
-new Date().toISOString(),
+file.createdTime,
 
 
 
 url:
 
 new URL(
-
 "/file/"+file.id,
-
 request.url
-
 ).toString()
 
 
 
-})
-
-)
+}))
 
 
 
@@ -2348,6 +2531,11 @@ const ADMIN=${admin};
 
 let photos=[];
 
+let page=1;
+
+let loading=false;
+
+let hasMore=true;
 
 let current=0;
 
@@ -2454,66 +2642,75 @@ const big=document.getElementById(
 
 
 
-async function loadPhotos(){
+async function loadPhotos(reset=false){
 
-try{
+
+if(loading)
+return;
+
+
+if(!hasMore && !reset)
+return;
+
+
+
+loading=true;
+
+
+
+if(reset){
+
+page=1;
+
+photos=[];
+
+hasMore=true;
+
+content.innerHTML="";
+
+}
+
 
 
 const res =
-await fetch("/api/page");
-
-
-console.log(
-"page status:",
-res.status
-);
-
-
-const text =
-await res.text();
-
-
-console.log(
-"page response:",
-text
+await fetch(
+"/api/page?page="+page
 );
 
 
 
 const data =
-JSON.parse(text);
+await res.json();
 
 
 
-photos =
-data.files || [];
+photos.push(
+...(data.files||[])
+);
+
+
+
+hasMore =
+data.hasMore;
+
+
+
+page++;
 
 
 
 document.getElementById(
 "count"
 ).innerHTML =
-photos.length+" 张";
+data.total+" 张";
+
 
 
 render();
 
 
 
-}catch(e){
-
-
-console.error(
-"加载照片失败:",
-e
-);
-
-
-content.innerHTML =
-"加载失败: "+e.message;
-
-
-}
+loading=false;
 
 
 }
@@ -3069,6 +3266,26 @@ data.url
 
 loadPhotos();
 
+window.addEventListener(
+"scroll",
+()=>{
+
+
+if(
+window.innerHeight+
+window.scrollY
+>=
+document.body.offsetHeight-500
+){
+
+
+loadPhotos();
+
+
+}
+
+
+});
 
 if(ADMIN){
 
@@ -3510,7 +3727,7 @@ task.file.name +
 "　完成 ✓";
 
 
-loadPhotos();
+loadPhotos(true);
 
 
 // 检查是否全部完成
@@ -3648,7 +3865,7 @@ env,
 ctx
 ){
 
-
+globalThis.ENV = env;
 
 CONFIG.CLIENT_ID =
 env.CLIENT_ID ||
