@@ -1,313 +1,449 @@
-# Apple Photos v5.5.1 使用帮助与隐私说明
-
-## 1. 项目简介
-
-Apple Photos 是一个基于 Cloudflare Worker + Google Drive 的私人照片管理系统。
-
-主要功能：
-
-* 管理员上传照片
-* 管理员删除照片
-* 游客浏览照片
-* 图片分享
-* 照片分页加载
-* Google Drive 云端存储
-* 图片代理访问
-* 收藏功能
-* 管理员权限控制
-* Drive Cache 加速
-
 ---
 
-# 2. 用户权限说明
+# Apple Photos v5.5.2 Drive Cache
 
-## 管理员
+## Cloudflare Worker + Google Drive 私人照片管理系统
 
-管理员登录后可以：
-
-* 上传照片
-* 删除照片
-* 管理照片内容
-* 使用上传队列功能
-
-## 游客
-
-游客只能：
-
-* 浏览公开照片
-* 查看分享链接
-
-游客禁止：
-
-* 上传照片
-* 删除照片
-* 修改照片数据
-
----
-
-# 3. 照片上传说明
-
-上传流程：
+版本：
 
 ```
-选择照片
-    ↓
-浏览器上传
-    ↓
-Cloudflare Worker 接收
-    ↓
-Google Drive 保存
-    ↓
-照片列表更新
+Apple Photos v5.5.2
+Drive Cache Edition
 ```
 
-支持：
+技术：
 
-* 多照片上传
-* 上传进度显示
-* 上传失败提示
-* 自动刷新照片列表
+* Cloudflare Workers
+* Cloudflare KV Cache
+* Google Drive API
+* Google OAuth2
+* Cloudflare Image Resizing
+* EXIF 时间排序
+* 手机端 Apple Photos 风格 UI
 
 ---
 
-# 4. 重要隐私说明：EXIF 信息读取风险
+# ⚠️ 重要声明（请阅读）
 
-## ⚠️ 本系统会读取照片 EXIF 信息
+## EXIF 信息读取风险说明
 
-照片文件通常可能包含 EXIF 元数据。
-
-EXIF 是相机或手机自动写入照片中的信息。
-
-可能包含：
-
-* 拍摄时间
-* GPS 地理位置
-* 手机型号
-* 相机型号
-* 镜头信息
-* 拍摄参数
-* 软件信息
+本项目支持读取照片 EXIF 信息：
 
 例如：
 
 ```
-照片.jpg
+拍摄时间
 
-EXIF:
+GPS 经纬度
 
-拍摄时间:
-2026-08-18 10:30
+设备型号
 
-GPS:
-Latitude:
-31.xxxxxx
+相机型号
 
-Longitude:
-121.xxxxxx
+镜头信息
 
-设备:
-iPhone
+软件版本
+
+曝光参数
+
 ```
+
+其中主要用于：
+
+```
+imageMediaMetadata.time
+```
+
+读取照片拍摄时间：
+
+例如：
+
+```
+2024:05:20 18:33:12
+```
+
+用于：
+
+* 年份归档
+* 月份归档
+* 时间排序
 
 ---
 
-# 5. EXIF 隐私风险
+## ⚠️ 隐私风险
 
-如果照片包含 GPS 信息，可能暴露：
+部分照片可能包含：
 
-* 家庭住址
+### GPS 位置信息
+
+例如：
+
+```
+Latitude:
+37.7749
+
+Longitude:
+-122.4194
+```
+
+如果照片公开分享：
+
+可能泄露：
+
+* 家庭地址
 * 工作地点
 * 常去位置
 * 旅行路线
-* 拍摄时间规律
-
-如果照片分享给其他人，可能存在：
-
-```
-照片公开
-      ↓
-EXIF信息泄露
-      ↓
-他人获取拍摄位置
-```
-
-因此：
-
-## 不建议上传包含敏感位置的原始照片。
 
 ---
 
-# 6. EXIF 处理建议
+### 手机设备信息
 
-推荐上传前：
-
-### 方法1：关闭手机定位照片
-
-iPhone：
+可能包含：
 
 ```
-设置
- ↓
-隐私与安全性
- ↓
-定位服务
- ↓
-相机
- ↓
-关闭
-```
+Apple iPhone 15 Pro
 
-Android：
+iOS Camera
+
+Lens Model
 
 ```
-相机设置
- ↓
-关闭
-保存位置信息
-```
+
+可能暴露：
+
+* 手机型号
+* 拍摄设备
 
 ---
 
-### 方法2：上传时自动清除 EXIF
+### 第三方 AI 风险
 
-建议版本：
-
-Apple Photos v5.5.2
-
-增加：
+未来 AI 模块可能支持：
 
 ```
-上传照片
- ↓
-浏览器处理
- ↓
-删除EXIF
- ↓
-上传Google Drive
+人脸识别
+
+物体识别
+
+智能相册
+
+地点分析
 ```
 
-清除：
+如果启用：
 
-* GPS
-* 设备信息
-* 镜头信息
-* 软件信息
-
-保留：
-
-* 图片内容
-* 图片质量
+照片内容可能需要发送到 AI 服务。
 
 ---
 
-# 7. Google Drive 存储说明
-
-照片实际存储位置：
-
-```
-Google Drive
-        |
-        |
-Apple Photos Folder
-```
-
-系统不会把照片保存到 Worker 本地。
-
-Worker 只负责：
-
-* 身份验证
-* 图片请求代理
-* 上传转发
-* 权限控制
-
----
-
-# 8. Drive Cache 加速说明（v5.5.1）
-
-v5.5.1 增加：
-
-```
-Google Drive
-       |
-       |
-照片列表缓存
-       |
-       |
-Cloudflare KV
-```
-
-作用：
-
-* 减少 Google API 请求
-* 加快首页打开速度
-* 降低加载等待
-
-缓存内容：
-
-包含：
-
-* 文件ID
-* 文件名
-* 创建时间
-* 图片列表信息
-
-不建议缓存：
-
-* 原始照片
-* 用户隐私数据
-
----
-
-# 9. Config 配置安全说明
-
-以下配置属于敏感信息：
-
-```
-CLIENT_ID
-
-CLIENT_SECRET
-
-REFRESH_TOKEN
-
-ADMIN_KEY
-
-DRIVE_FOLDER_ID
-```
-
-不要：
-
-* 上传到 GitHub
-* 分享给他人
-* 放入公开网页
-* 发布截图
+# 如果你介意：
 
 建议：
 
-使用 Cloudflare Worker Environment Variables：
+关闭 EXIF 读取
+
+上传前：
+
+使用：
 
 ```
-CLIENT_ID
-CLIENT_SECRET
-REFRESH_TOKEN
-ADMIN_KEY
+导出照片
 ```
 
-Cloudflare Worker 增加 KV
+或：
+
+```
+删除 EXIF
+```
+
+工具处理。
+
+---
+
+# 本项目适合：
+
+✅ 个人私有照片库
+✅ 家庭照片服务器
+✅ Google Drive 私人图库
+✅ Cloudflare 全球访问
+
+---
+
+# 不适合：
+
+❌ 存储高度敏感照片
+
+❌ 商业用户未经隐私评估直接使用
+
+❌ 不希望任何 EXIF 信息被读取的人
+
+---
+
+# 部署结构
+
+```
+用户浏览器
+
+      |
+      |
+Cloudflare Worker
+
+      |
+      |
+Google Drive API
+
+      |
+      |
+Google Drive Folder
+
+
+      +
+
+Cloudflare KV Cache
+
+```
+
+---
+
+# 一、准备环境
+
+需要：
+
+## 1. Cloudflare 账号
+
+地址：
+
+[https://dash.cloudflare.com](https://dash.cloudflare.com)
+
+需要：
+
+* Workers
+* KV Namespace
+
+---
+
+## 2. Google Cloud 项目
+
+打开：
+
+[https://console.cloud.google.com](https://console.cloud.google.com)
+
+创建项目：
+
+例如：
+
+```
+Apple Photos Worker
+```
+
+---
+
+# 二、开启 Google Drive API
 
 进入：
 
-Cloudflare Dashboard
+```
+APIs & Services
 
 ↓
 
+Library
+
+↓
+
+Google Drive API
+
+↓
+
+Enable
+
+```
+
+---
+
+# 三、创建 OAuth 凭证
+
+进入：
+
+```
+APIs & Services
+
+↓
+
+Credentials
+
+↓
+
+Create Credentials
+
+↓
+
+OAuth Client ID
+```
+
+类型：
+
+```
+Desktop App
+```
+
+或者：
+
+```
+Web Application
+```
+
+获取：
+
+```
+CLIENT_ID
+
+CLIENT_SECRET
+
+```
+
+---
+
+# 四、获取 REFRESH_TOKEN
+
+授权：
+
+Google OAuth
+
+权限：
+
+```
+https://www.googleapis.com/auth/drive
+```
+
+最终得到：
+
+```
+REFRESH_TOKEN
+```
+
+---
+
+# 五、创建 Google Drive 文件夹
+
+例如：
+
+```
+My Photos
+```
+
+获取 Folder ID
+
+地址：
+
+```
+https://drive.google.com/drive/folders/xxxxxxxx
+```
+
+其中：
+
+```
+xxxxxxxx
+```
+
+就是：
+
+```
+FOLDER_ID
+```
+
+---
+
+# 六、Cloudflare Worker 配置
+
+进入：
+
+```
 Workers
 
 ↓
 
-你的 Worker
+Settings
 
 ↓
 
+Variables
+```
+
+添加：
+
+---
+
+## Environment Variables
+
+| 变量            | 说明                     |
+| ------------- | ---------------------- |
+| CLIENT_ID     | Google OAuth Client ID |
+| CLIENT_SECRET | Google OAuth Secret    |
+| REFRESH_TOKEN | Google Refresh Token   |
+| FOLDER_ID     | Google Drive 文件夹 ID    |
+| ADMIN_KEY     | 管理员密码                  |
+
+---
+
+例如：
+
+```
+CLIENT_ID
+
+xxxxx.apps.googleusercontent.com
+
+
+CLIENT_SECRET
+
+xxxxx
+
+
+REFRESH_TOKEN
+
+xxxxx
+
+
+FOLDER_ID
+
+1AbCdEfGhijk
+
+
+ADMIN_KEY
+
+your_password
+```
+
+---
+
+# 七、KV Cache 配置
+
+创建 KV：
+
+进入：
+
+```
+Workers
+
+↓
+
+KV
+
+↓
+
+Create namespace
+```
+
+名称：
+
+```
+PHOTO_CACHE
+```
+
+绑定 Worker：
+
+```
 Settings
 
 ↓
@@ -316,113 +452,474 @@ Bindings
 
 ↓
 
-Add binding
-
-添加：
-```
-Type:
 KV Namespace
-
-Variable name:
-
-PHOTO_CACHE
-
-Namespace:
-
-创建一个新的 KV
 ```
 
-例如：
+变量名：
 
 ```
 PHOTO_CACHE
+```
+
+代码中使用：
+
+```javascript
+ENV.PHOTO_CACHE
 ```
 
 ---
 
-# 10. 图片访问安全
+# 八、上传 Worker
 
-公开图片访问：
+文件：
+
+```
+worker.js
+```
+
+部署：
+
+```
+Workers
+
+↓
+
+Create Worker
+
+↓
+
+Edit Code
+
+↓
+
+Paste
+
+↓
+
+Deploy
+```
+
+---
+
+# 九、首次登录
+
+访问：
+
+```
+https://你的worker域名/
+```
+
+管理员：
+
+```
+https://你的worker域名/admin
+```
+
+输入：
+
+```
+ADMIN_KEY
+```
+
+成功后：
+
+Cookie:
+
+```
+photos_admin
+```
+
+有效期：
+
+```
+86400 秒
+```
+
+即：
+
+24小时
+
+---
+
+# 十、照片上传流程
+
+浏览器：
+
+```
+上传照片
+
+↓
+
+Worker
+
+↓
+
+Google Drive API
+
+↓
+
+指定 FOLDER_ID
+
+↓
+
+保存照片
+
+```
+
+上传后：
+
+自动设置：
+
+```
+anyone
+
+reader
+```
+
+所以：
+
+上传照片默认公开访问。
+
+---
+
+# ⚠️ 重要安全提醒
+
+当前代码：
+
+```javascript
+type:"anyone",
+role:"reader"
+```
+
+意味着：
+
+Google Drive 文件：
+
+公开读取。
+
+即：
+
+知道图片 ID
+
+即可访问：
 
 ```
 /file/{id}
 ```
 
-如果开启：
+---
+
+如果用于私人照片：
+
+建议修改：
+
+删除：
+
+```javascript
+type:"anyone"
+```
+
+改成：
 
 ```
-anyone reader
+private
 ```
 
-Google Drive 图片可能被访问。
+或者：
 
-如果需要私人相册：
+增加：
 
-建议：
-
-* 删除公开权限
-* 使用 Worker 鉴权
-* 增加登录访问
+```
+签名 URL
+```
 
 ---
 
-# 11. 数据安全建议
+# 十一、EXIF 排序逻辑
 
-建议：
+服务器读取：
 
-定期：
+```javascript
+file.imageMediaMetadata.time
+```
 
-* 检查 Google Drive 权限
-* 更换管理员密码
-* 删除不用的 OAuth Token
-* 备份照片
+优先：
 
-不要上传：
+```
+照片拍摄时间
+```
 
-* 身份证照片
-* 护照照片
-* 银行资料
-* 含家庭地址的照片
+否则：
+
+```
+createdTime
+```
+
+排序：
+
+```
+最新照片优先
+```
 
 ---
 
-# 12. 推荐升级路线
+# 十二、Cloudflare 图片处理
 
-## v5.5.1
+缩略图：
 
-已完成：
+```
+/thumb/{id}?w=400
+```
 
-✅ Drive Cache
-✅ 首页加载优化
-✅ 减少 Google API 请求
+使用：
 
-## v5.5.2
+Cloudflare Image Resizing
 
-建议：
+自动：
 
-✅ 上传自动清除 EXIF
-✅ 自动生成缩略图
+* WebP
+* AVIF
+* 压缩
+* 缩放
+
+---
+
+# 十三、缓存机制
+
+照片列表：
+
+缓存：
+
+```
+photos_drive_list_v552
+```
+
+时间：
+
+```
+300秒
+```
+
+流程：
+
+```
+请求
+
+↓
+
+KV Cache
+
+↓
+
+命中
+
+↓
+
+直接返回
+
+
+未命中
+
+↓
+
+Google Drive API
+
+↓
+
+写入 KV
+
+```
+
+---
+
+# 十四、目录结构
+
+Google Drive：
+
+```
+My Photos
+
+├── IMG001.jpg
+├── IMG002.jpg
+├── IMG003.jpg
+│
+├── photos_favorites.json
+│
+└── photos_ai.json
+```
+
+---
+
+# 十五、权限建议
+
+推荐：
+
+Google Drive：
+
+创建专用账号：
+
+例如：
+
+```
+photos-storage@gmail.com
+```
+
+不要：
+
+使用私人主账号。
+
+原因：
+
+如果：
+
+```
+REFRESH_TOKEN
+```
+
+泄露：
+
+攻击者可能访问整个 Drive。
+
+---
+
+# 十六、必须保护的变量
+
+以下绝不能公开：
+
+```
+CLIENT_SECRET
+
+REFRESH_TOKEN
+
+ADMIN_KEY
+```
+
+泄露后：
+
+可能导致：
+
+* Drive 数据访问
+* 照片删除
+* 管理权限获取
+
+---
+
+# 十七、当前版本功能
+
+已实现：
+
+✅ Google Drive 存储
+
+✅ OAuth 自动刷新 Token
+
+✅ 上传
+
+✅ 删除
+
+✅ 图片代理
+
+✅ 缩略图
+
+✅ KV 缓存
+
+✅ 手机端 UI
+
+✅ 分享页面
+
+✅ 收藏系统
+
+✅ AI 接口预留
+
+---
+
+# 十八、已知限制
+
+## 1. EXIF 依赖 Google Drive metadata
+
+不是直接解析原图。
+
+---
+
+## 2. 分享链接目前无权限控制
+
+例如：
+
+```
+/share/photo_id
+```
+
+公开。
+
+---
+
+## 3. 图片默认公开
+
+需要私人模式请修改：
+
+```
+permissions
+```
+
+---
+
+## 4. 大规模图库需要分页优化
+
+当前：
+
+```
+100/page
+```
+
+适合：
+
+几千张照片。
+
+---
+
+# 十九、升级建议路线
 
 ## v5.6
 
-计划：
+建议：
 
-✅ Thumbnail Engine
-✅ 虚拟滚动
-✅ 大规模照片优化
+加入：
+
+* 私有图片签名 URL
+* JWT 登录
+* 多账户 Drive
+* 用户隔离
+* EXIF 开关
 
 ---
 
-# 最终隐私提醒
+## v5.7
 
-Apple Photos 可以作为私人照片管理系统使用，但：
+加入：
 
-**照片文件本身可能包含隐藏 EXIF 信息。**
+* Cloudflare R2 缓存层
+* 图片永久 CDN
+* AI 分类
+* 人脸本地识别
 
-上传前请确认：
+---
 
-* 是否允许保存拍摄时间
-* 是否允许保存地理位置
-* 是否需要清除设备信息
+# 最终免责声明
 
-对于敏感照片，建议启用 EXIF 清除功能后再上传。
+> 本项目读取照片 EXIF 信息用于照片时间管理和排序。EXIF 可能包含个人位置、设备和拍摄信息。
+> 如果您不接受照片元数据被读取、处理或潜在泄露，请不要使用本项目。
+> 使用本项目即代表您了解并接受相关隐私风险。
+
+```
+EXIF 不喜勿用。
+私人照片请自行评估风险。
+```
+
+---
+
+以上文档可直接作为项目部署说明。建议下一步升级 **v5.5.3 安全版**：
+
+1. EXIF 开关
+2. 私有图片模式
+3. 分享签名 URL
+4. 多账户隔离
+5. 防止 FOLDER_ID 泄露导致越权访问。
